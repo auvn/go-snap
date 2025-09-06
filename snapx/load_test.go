@@ -3,6 +3,7 @@ package snapx_test
 import (
 	"embed"
 	_ "embed"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,8 +26,14 @@ func TestLoad(t *testing.T) {
 	var cfg testConfig
 	err := snapx.Load(
 		&cfg,
-		snapx.WithFS(_testdata),
-		snapx.WithConfigName("testdata/test-config.yaml"),
+		snapx.WithRawConfigReader(func() (io.Reader, func(), error) {
+			f, err := _testdata.Open("testdata/test-config.yaml")
+			if err != nil {
+				return nil, nil, err
+			}
+
+			return f, func() { f.Close() }, nil
+		}),
 	)
 	require.NoError(t, err)
 

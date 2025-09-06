@@ -2,28 +2,25 @@ package snapx
 
 import (
 	"fmt"
-	"io/fs"
+	"io"
 
 	"go.yaml.in/yaml/v3"
-
-	"github.com/auvn/go-snap/internal/errlog"
 )
 
+type RawConfigReader func() (io.Reader, func(), error)
+
 func loadYamlFile[T any](
-	fs fs.FS,
-	f string,
+	reader RawConfigReader,
 	dest *T,
 ) error {
-	cfgFile, err := fs.Open(f)
+	f, closeF, err := reader()
 	if err != nil {
 		return fmt.Errorf("open: %w", err)
 	}
 
-	defer func() {
-		errlog.SwallowError(cfgFile.Close(), "close config file")
-	}()
+	defer closeF()
 
-	dec := yaml.NewDecoder(cfgFile)
+	dec := yaml.NewDecoder(f)
 	if err := dec.Decode(dest); err != nil {
 		return fmt.Errorf("decode yaml: %w", err)
 	}

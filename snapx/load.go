@@ -1,51 +1,37 @@
 package snapx
 
 import (
+	"errors"
 	"fmt"
-	"io/fs"
+	"io"
 	"os"
 
+	"github.com/auvn/go-snap/internal/errlog"
 	"github.com/mitchellh/mapstructure"
 	_ "github.com/spf13/viper"
 )
 
 type options struct {
-	ConfigName  string
-	EnvPrefix   string
-	TagName     string
-	FileName    string
-	DisableEnv  bool
-	ErrorUnused bool
-	FS          func() fs.FS
+	EnvPrefix       string
+	TagName         string
+	DisableEnv      bool
+	ErrorUnused     bool
+	RawConfigReader RawConfigReader
 }
 
 func (o *options) withDefaults() {
-	if o.ConfigName == "" {
-		o.ConfigName = "config.yaml"
-	}
-
 	if o.TagName == "" {
 		o.TagName = "snapx"
 	}
 
-	if o.FS == nil {
-		o.FS = func() fs.FS { return os.DirFS(".") }
+	if o.RawConfigReader == nil {
+		o.RawConfigReader = func() (io.Reader, func(), error) {
+			return nil, nil, errors.New("no config file specified")
+		}
 	}
 }
 
 type Option func(*options)
-
-func WithConfigName(cfg string) Option {
-	return func(o *options) {
-		o.ConfigName = cfg
-	}
-}
-
-func WithFS(f fs.FS) Option {
-	return func(o *options) {
-		o.FS = func() fs.FS { return f }
-	}
-}
 
 func WithEnvPrefix(prefix string) Option {
 	return func(o *options) {
@@ -67,7 +53,20 @@ func WithTagName(tag string) Option {
 
 func WithFileName(f string) Option {
 	return func(o *options) {
-		o.FileName = f
+		o.RawConfigReader = func() (io.Reader, func(), error) {
+			f, err := os.Open(f)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			return f, func() { errlog.SwallowError(f.Close(), "close file") }, nil
+		}
+	}
+}
+
+func WithRawConfigReader(r RawConfigReader) Option {
+	return func(o *options) {
+		o.RawConfigReader = r
 	}
 }
 
@@ -84,7 +83,7 @@ func Load[T any](
 	opts.withDefaults()
 
 	var raw map[string]any
-	if err := loadYamlFile(opts.FS(), opts.ConfigName, &raw); err != nil {
+	if err := loadYamlFile(opts.RawConfigReader, &raw); err != nil {
 		return fmt.Errorf("load raw config: %w", err)
 	}
 
