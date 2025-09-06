@@ -113,7 +113,6 @@ func Load[T any](
 
 func MustLoad[T any](
 	dest *T,
-	cfgFile string,
 	opts ...Option,
 ) {
 	if err := Load(dest, opts...); err != nil {
