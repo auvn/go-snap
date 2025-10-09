@@ -8,7 +8,6 @@ import (
 
 	"github.com/auvn/go-snap/internal/errlog"
 	"github.com/mitchellh/mapstructure"
-	_ "github.com/spf13/viper"
 )
 
 type options struct {
