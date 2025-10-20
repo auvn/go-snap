@@ -1,0 +1,9 @@
+{
+  "key": "value",
+  "map": { "key": "value" },
+  "MapOfMaps": {
+    "super.Puper.Key": { "A": "b", "C": "d" }
+  },
+  "AnotherKey": "value"
+}
+

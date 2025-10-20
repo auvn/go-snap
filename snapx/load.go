@@ -15,6 +15,7 @@ type options struct {
 	TagName         string
 	DisableEnv      bool
 	ErrorUnused     bool
+	RawConfigFormat RawConfigFormat
 	RawConfigReader RawConfigReader
 }
 
@@ -27,6 +28,10 @@ func (o *options) withDefaults() {
 		o.RawConfigReader = func() (io.Reader, func(), error) {
 			return nil, nil, errors.New("no config file specified")
 		}
+	}
+
+	if o.RawConfigFormat <= 0 {
+		o.RawConfigFormat = RawConfigFormatYAML
 	}
 }
 
@@ -63,6 +68,12 @@ func WithFileName(f string) Option {
 	}
 }
 
+func WithRawConfigFormat(format RawConfigFormat) Option {
+	return func(o *options) {
+		o.RawConfigFormat = format
+	}
+}
+
 func WithRawConfigReader(r RawConfigReader) Option {
 	return func(o *options) {
 		o.RawConfigReader = r
@@ -82,7 +93,12 @@ func Load[T any](
 	opts.withDefaults()
 
 	var raw map[string]any
-	if err := loadYamlFile(opts.RawConfigReader, &raw); err != nil {
+
+	if err := loadRawConfig(
+		opts.RawConfigFormat,
+		opts.RawConfigReader,
+		&raw,
+	); err != nil {
 		return fmt.Errorf("load raw config: %w", err)
 	}
 
